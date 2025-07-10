@@ -29,3 +29,31 @@ greenlight-api/
 **go.mod** will declare our project dependencies, versions and module path
 
 **Makefile** will contain recipes for automating common administrative tasks- like auditing our Go code, building binaries, and executing database migrations
+
+## we will now demonstrate how httprouter works by adding two endpoints for creating a new movie and showing the details of a specific movie
+
+
+## Encapsulating the API routes
+We will encapsulate all the routing rules in a new **cmd/api/routes.go**
+
+## HTTP basics in Golang
+## 1. http.Handler--Interface
+
+This is the interface that all HTTP handlers must implement.It looks like:
+<code><pre>
+type Handler interface{
+    serveHTTP(ResponseWriter, *Request)
+}
+</pre></code>
+
+## 2. http.HandlerFunc --Adapter
+This is a type that lets you turn a regular function into something that satisfies the http.Handler interface.
+<code><pre>
+type HandlerFunc func(ResponseWRiter, *Request)
+
+func (f HandlerFunc) ServeHTTP(w ResponseWriter, r *Request){
+    f(w,r)
+}
+</pre></code>
+
+
