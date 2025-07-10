@@ -65,6 +65,7 @@ func main() {
 	// Declare a HTTP server which listens on the port provided in the config struct,
 	// uses the servemux we created above as the handler, has some sensible timeout
 	// settings and writes any log messages to the structured logger at Error level.
+	//Use the httprouter instance returned by app.routes() as the server handler
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.port),
