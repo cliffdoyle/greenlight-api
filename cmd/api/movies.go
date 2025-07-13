@@ -3,6 +3,9 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"time"
+
+	"github.com/greenlight-api/internal/data"
 )
 
 // Add a createMovieHandler for the "POST /v1/movies" endpoint. For now we simply
@@ -20,7 +23,16 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 		http.NotFound(w, r)
 		return
 	}
+	data:=data.Movie{
+		ID: id,
+		CreatedAt: time.Now(),
+		Title: "Commando",
+		Runtime: 120,
+		Genre: []string{"acappela","war","action"},
+		Version: 12,
+	}
 
 	// otherwise, we interpolate the movie ID in a placeholder response
-	fmt.Fprintf(w, "show the details of movie %d\n", id)
+	// fmt.Fprintf(w, "show the details of movie %d\n", id)
+	app.writeJson(data,w,r)
 }
