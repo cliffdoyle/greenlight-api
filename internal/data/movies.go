@@ -2,6 +2,10 @@ package data
 
 import "time"
 
+
+//To control the visibility of individual struct fields in the JSON 
+//use omitzero and - struct tag directives.
+
 type Movie struct{
 	ID int64 `json:"id"`
 	CreatedAt time.Time `json:"-"`

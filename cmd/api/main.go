@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"runtime"
 	"time"
 )
 
@@ -13,6 +14,8 @@ import (
 // generate this automatically at build time, but for now we'll just store the version
 // number as a hard-coded global constant.
 const version = "1.0.0"
+
+type olifo string
 
 // Define a config struct to hold all the configuration settings for our application.
 // For now, the only configuration settings will be the network port that we want the
@@ -22,6 +25,9 @@ const version = "1.0.0"
 type config struct {
 	port int
 	env  string
+	db   struct {
+		dsn string
+	}
 }
 
 // Define an application struct to hold the dependencies for our HTTP handlers, helpers,
@@ -44,6 +50,10 @@ func main() {
 	// corresponding flags are provided
 	flag.IntVar(&cfg.port, "port", 4000, "API server port")
 	flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
+
+	//Read the DSN value from the db-dsn command-line flag into the config struct.
+	//We default to using our development DSN if no flag is provided
+	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("GREENLIGHT_DB_DSN"), "PostgreSQL DSN")
 	flag.Parse()
 
 	// Initialize a new structured logger which writes log entries to the standard out
@@ -60,11 +70,26 @@ func main() {
 	// Declare a new servemux and add a /v1/healthcheck route which dispatches requests
 	// to the healthcheckerhandler method
 	// mux := app.routes()
-	
 
 	// Declare a HTTP server which listens on the port provided in the config struct,
 	// uses the servemux we created above as the handler, has some sensible timeout
 	// settings and writes any log messages to the structured logger at Error level.
+
+	fmt.Println("num of goroutines",runtime.NumGoroutine())
+	fmt.Println("logical CPUs available",runtime.NumCPU())
+	//Call the openDB() to create the connection pool passing in
+	//the config struct.
+	db, err := openDB(cfg)
+	if err != nil {
+		app.logger.Error(err.Error())
+		return
+	}
+
+	//Defer a call to db.Close() so that the connection pool is closed
+	defer db.Close()
+
+	logger.Info("database connection pool established")
+	//before the main() function exits
 	//Use the httprouter instance returned by app.routes() as the server handler
 
 	server := &http.Server{
@@ -79,7 +104,7 @@ func main() {
 	// Start the HTTP server
 	logger.Info("Starting server", "addr", server.Addr, "env", cfg.env)
 
-	err := server.ListenAndServe()
+	err = server.ListenAndServe()
 	logger.Error(err.Error())
 	os.Exit(1)
 }
