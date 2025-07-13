@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"runtime"
 	"time"
 )
 
@@ -14,8 +13,6 @@ import (
 // generate this automatically at build time, but for now we'll just store the version
 // number as a hard-coded global constant.
 const version = "1.0.0"
-
-type olifo string
 
 // Define a config struct to hold all the configuration settings for our application.
 // For now, the only configuration settings will be the network port that we want the
@@ -26,7 +23,10 @@ type config struct {
 	port int
 	env  string
 	db   struct {
-		dsn string
+		dsn          string
+		maxOpenConns int
+		maxIdleConns int
+		maxIdleTime  time.Duration
 	}
 }
 
@@ -54,6 +54,12 @@ func main() {
 	//Read the DSN value from the db-dsn command-line flag into the config struct.
 	//We default to using our development DSN if no flag is provided
 	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("GREENLIGHT_DB_DSN"), "PostgreSQL DSN")
+
+	// Read the connection pool settings from command-line flags into the config struct.
+	// Notice that the default values we're using are the ones we discussed above?
+	flag.IntVar(&cfg.db.maxOpenConns, "db-max-open-conns", 25, "PostgreSQL max open connections")
+	flag.IntVar(&cfg.db.maxIdleConns, "db-max-idle-conns", 25, "PostgreSQL max idle connections")
+	flag.DurationVar(&cfg.db.maxIdleTime, "db-max-idle-time", 15*time.Minute, "PostgreSQL max connection idle time")
 	flag.Parse()
 
 	// Initialize a new structured logger which writes log entries to the standard out
@@ -75,8 +81,6 @@ func main() {
 	// uses the servemux we created above as the handler, has some sensible timeout
 	// settings and writes any log messages to the structured logger at Error level.
 
-	fmt.Println("num of goroutines",runtime.NumGoroutine())
-	fmt.Println("logical CPUs available",runtime.NumCPU())
 	//Call the openDB() to create the connection pool passing in
 	//the config struct.
 	db, err := openDB(cfg)
