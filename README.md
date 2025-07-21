@@ -14,6 +14,8 @@ greenlight-api/
 </code></pre>
 </details>
 
+**DSN- data source name, string that contains the necessary connection parameters**
+
 
 **bin**  directory will contain our compiled application binaries, ready for deployment to a production server
 

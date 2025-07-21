@@ -3,10 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"log/slog"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 // Declare a string containing the application version number. Later in the book we'll
@@ -39,6 +42,12 @@ type application struct {
 }
 
 func main() {
+
+	//load the .env file
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 	// logger := slog.New(slog.NewTextHandler(os.Stdout,nil))
 	// logger.Info("This is informational message","user_id",45,"ip","127.0.0.1")
 
@@ -72,6 +81,8 @@ func main() {
 		config: cfg,
 		logger: logger,
 	}
+
+	fmt.Println("env variable", cfg.db.dsn)
 
 	// Declare a new servemux and add a /v1/healthcheck route which dispatches requests
 	// to the healthcheckerhandler method

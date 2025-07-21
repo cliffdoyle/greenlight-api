@@ -12,7 +12,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	//Import the pq driver so that it can register itself with the database/sql
-	_"github.com/lib/pq"
+	_ "github.com/lib/pq"
 )
 
 // When httprouter is parsing a request, any interpolated URL parameters will be
@@ -38,41 +38,40 @@ func (app *application) readIDParam(r *http.Request) (int64, error) {
 //For sending JSON responses to the client
 
 func (app *application) writeJson(data any, w http.ResponseWriter, r *http.Request) {
-	js, err := json.MarshalIndent(data,"","\t")
+	js, err := json.MarshalIndent(data, "", "\t")
 	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
-	js=append(js, '\n')
+	js = append(js, '\n')
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(js)
 }
 
-
-//The openDB() function returns a sql.DB connection pool
-//Uses db.PingContext() to actually create a connection and verify
-//that everything is set up correctly
-func openDB(cfg config)(*sql.DB,error){
-	db,err:=sql.Open("postgres",cfg.db.dsn)
-	if err !=nil{
-		return nil,err
+// The openDB() function returns a sql.DB connection pool
+// Uses db.PingContext() to actually create a connection and verify
+// that everything is set up correctly
+func openDB(cfg config) (*sql.DB, error) {
+	db, err := sql.Open("postgres", cfg.db.dsn)
+	if err != nil {
+		return nil, err
 	}
 
 	//Create a context with a 5-second timeout deadline
-	ctx,cancel:=context.WithTimeout(context.Background(),5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	//Use pingContext() to establish a new connection to the database, passing in the 
-	//context we created above as a parameter.If the connection couldn't be 
+	//Use pingContext() to establish a new connection to the database, passing in the
+	//context we created above as a parameter.If the connection couldn't be
 	//established successfully within the 5 second deadline, then this returns an error
 	//If we get this error, or any other , we close the connection pool and return the error
-	err=db.PingContext(ctx)
-	if err !=nil{
+	err = db.PingContext(ctx)
+	if err != nil {
 		db.Close()
 		return nil, err
 	}
 
 	//Return the sql.DB connection pool
-	return  db,nil
+	return db, nil
 }

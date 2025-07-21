@@ -20,8 +20,6 @@ func (app *application) healthcheckHandler(w http.ResponseWriter, r *http.Reques
 		"version":     version,
 	}
 
-
-
 	// Set the "Content-Type: application/json" header on the response. If you forget to
 	// this, Go will default to sending a "Content-Type: text/plain; charset=utf-8"
 	// header instead
@@ -29,7 +27,7 @@ func (app *application) healthcheckHandler(w http.ResponseWriter, r *http.Reques
 
 	//Write the JSON as the HTTP response body
 	// w.Write([]byte(js))
-	app.writeJson(data, w,r)
+	app.writeJson(data, w, r)
 }
 
 //The important thing to point out is that healthcheckHandler is implemented

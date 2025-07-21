@@ -23,16 +23,16 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 		http.NotFound(w, r)
 		return
 	}
-	data:=data.Movie{
-		ID: id,
+	data := data.Movie{
+		ID:        id,
 		CreatedAt: time.Now(),
-		Title: "Commando",
-		Runtime: 120,
-		Genre: []string{"acappela","war","action"},
-		Version: 12,
+		Title:     "Commando",
+		Runtime:   120,
+		Genre:     []string{"acappela", "war", "action"},
+		Version:   12,
 	}
 
 	// otherwise, we interpolate the movie ID in a placeholder response
 	// fmt.Fprintf(w, "show the details of movie %d\n", id)
-	app.writeJson(data,w,r)
+	app.writeJson(data, w, r)
 }
