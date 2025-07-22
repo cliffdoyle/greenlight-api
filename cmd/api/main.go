@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/greenlight-api/internal/data"
 	"github.com/joho/godotenv"
 )
 
@@ -39,6 +40,7 @@ type config struct {
 type application struct {
 	config config
 	logger *slog.Logger
+	models data.Models
 }
 
 func main() {
@@ -75,35 +77,31 @@ func main() {
 	// stream
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	// Declare an instance of the application struct, containing the config
-	// struct and the logger
-	app := &application{
-		config: cfg,
-		logger: logger,
-	}
-
-	fmt.Println("env variable", cfg.db.dsn)
-
-	// Declare a new servemux and add a /v1/healthcheck route which dispatches requests
-	// to the healthcheckerhandler method
-	// mux := app.routes()
-
-	// Declare a HTTP server which listens on the port provided in the config struct,
-	// uses the servemux we created above as the handler, has some sensible timeout
-	// settings and writes any log messages to the structured logger at Error level.
-
 	//Call the openDB() to create the connection pool passing in
 	//the config struct.
 	db, err := openDB(cfg)
 	if err != nil {
-		app.logger.Error(err.Error())
+		logger.Error(err.Error())
 		return
 	}
 
 	//Defer a call to db.Close() so that the connection pool is closed
 	defer db.Close()
 
+
 	logger.Info("database connection pool established")
+
+	// Declare an instance of the application struct, containing the config
+	// struct and the logger
+	app := &application{
+		config: cfg,
+		logger: logger,
+		models: data.NewModels(db), //inject the models dependency
+	}
+
+	fmt.Println("env variable", cfg.db.dsn)
+
+
 	//before the main() function exits
 	//Use the httprouter instance returned by app.routes() as the server handler
 
