@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/greenlight-api/validator"
 	"github.com/lib/pq"
 )
 
@@ -20,32 +21,47 @@ type Movie struct {
 	Version   int32     `json:"version"`
 }
 
-//MovieModel struct type that wraps a sql.DB connection pool
-type MovieModel struct{
+func ValidateMovie(v *validator.Validator, movie *Movie) {
+	v.Check(movie.Title != "", "title", "must be provided")
+	v.Check(len(movie.Title) <= 500, "title", "must not be more than 500 bytes long")
+
+	v.Check(movie.Year != 0, "year", "must be provided")
+	v.Check(movie.Year >= 1888, "year", "must be greater than 1888")
+	v.Check(movie.Year <= int32(time.Now().Year()), "year", "must not be in the future")
+	v.Check(movie.Runtime != 0, "runtime", "must be provided")
+	v.Check(movie.Runtime > 0, "runtime", "must be a positive integer")
+	v.Check(movie.Genre != nil, "genres", "must be provided")
+	v.Check(len(movie.Genre) >= 1, "genres", "must contain at least 1 genre")
+	v.Check(len(movie.Genre) <= 5, "genres", "must not contain more than 5 genres")
+	v.Check(validator.Unique(movie.Genre), "genres", "must not contain duplicate values")
+}
+
+// MovieModel struct type that wraps a sql.DB connection pool
+type MovieModel struct {
 	DB *sql.DB
 }
 
-//Add a placeholder method for inserting a new record in the movies table
-func (m MovieModel)Insert(movie *Movie)error{
-	//SQL querry for insrting a new record in the movies table and returning 
+// Add a placeholder method for inserting a new record in the movies table
+func (m MovieModel) Insert(movie *Movie) error {
+	//SQL querry for insrting a new record in the movies table and returning
 	//system-generated data
-	query:=`
+	query := `
 	INSERT INTO movies (title,year,runtime,genres)
 	VALUES ($1,$2,$3,$4)
 	RETURNING id, created_at,version
 	`
 
-	//Args slice containing the values for the placeholder parameters from 
+	//Args slice containing the values for the placeholder parameters from
 	//the movie struct.Declaring it immediately next to the sql query
 	//makes it clear what values are used in the query
-	args:=[]any{movie.Title,movie.Year,movie.Runtime,pq.Array(movie.Genre)}
+	args := []any{movie.Title, movie.Year, movie.Runtime, pq.Array(movie.Genre)}
 
 	//use the QueryRow() method to execute the SQL query on the connection pool,
 	//passing in the args slice as a variadic parameter and scanning the system-generated
 	//id , created_at and version values into the movie struct
-	return  m.DB.QueryRow(query,args...).Scan(&movie.ID,&movie.CreatedAt,&movie.Version)
+	return m.DB.QueryRow(query, args...).Scan(&movie.ID, &movie.CreatedAt, &movie.Version)
 
-	//Because the Insert() method takes a *Movie pointer as the parameter, when we call Scan() to read in the 
+	//Because the Insert() method takes a *Movie pointer as the parameter, when we call Scan() to read in the
 	//system-generated data we're updating the values at the location the parameter points to.
 	//Essentially, the Insert() method mutates the Movie struct that is passed to it and adds the system-generated
 	//values to it
@@ -53,14 +69,15 @@ func (m MovieModel)Insert(movie *Movie)error{
 
 // Add a placeholder method for fetching a specific record from the movies table.
 func (m MovieModel) Get(id int64) (*Movie, error) {
-return nil, nil
-}
-// Add a placeholder method for updating a specific record in the movies table.
-func (m MovieModel) Update(movie *Movie) error {
-return nil
-}
-// Add a placeholder method for deleting a specific record from the movies table.
-func (m MovieModel) Delete(id int64) error {
-return nil
+	return nil, nil
 }
 
+// Add a placeholder method for updating a specific record in the movies table.
+func (m MovieModel) Update(movie *Movie) error {
+	return nil
+}
+
+// Add a placeholder method for deleting a specific record from the movies table.
+func (m MovieModel) Delete(id int64) error {
+	return nil
+}
