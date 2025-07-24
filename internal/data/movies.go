@@ -2,6 +2,7 @@ package data
 
 import (
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/greenlight-api/validator"
@@ -14,10 +15,10 @@ import (
 type Movie struct {
 	ID        int64     `json:"id"`
 	CreatedAt time.Time `json:"-"`
-	Title     string    `json:"titledeed"`
+	Title     string    `json:"title"`
 	Year      int32     `json:"year,omitzero"`
 	Runtime   int32     `json:"runtime,omitzero"`
-	Genre     []string  `json:"genre,omitzero"`
+	Genres     []string  `json:"genres,omitzero"`
 	Version   int32     `json:"version"`
 }
 
@@ -30,10 +31,10 @@ func ValidateMovie(v *validator.Validator, movie *Movie) {
 	v.Check(movie.Year <= int32(time.Now().Year()), "year", "must not be in the future")
 	v.Check(movie.Runtime != 0, "runtime", "must be provided")
 	v.Check(movie.Runtime > 0, "runtime", "must be a positive integer")
-	v.Check(movie.Genre != nil, "genres", "must be provided")
-	v.Check(len(movie.Genre) >= 1, "genres", "must contain at least 1 genre")
-	v.Check(len(movie.Genre) <= 5, "genres", "must not contain more than 5 genres")
-	v.Check(validator.Unique(movie.Genre), "genres", "must not contain duplicate values")
+	v.Check(movie.Genres != nil, "genres", "must be provided")
+	v.Check(len(movie.Genres) >= 1, "genres", "must contain at least 1 genre")
+	v.Check(len(movie.Genres) <= 5, "genres", "must not contain more than 5 genres")
+	v.Check(validator.Unique(movie.Genres), "genres", "must not contain duplicate values")
 }
 
 // MovieModel struct type that wraps a sql.DB connection pool
@@ -46,15 +47,15 @@ func (m MovieModel) Insert(movie *Movie) error {
 	//SQL querry for insrting a new record in the movies table and returning
 	//system-generated data
 	query := `
-	INSERT INTO movies (title,year,runtime,genres)
-	VALUES ($1,$2,$3,$4)
+	INSERT INTO movies (title,year,runtime,genres,version)
+	VALUES ($1,$2,$3,$4,$5)
 	RETURNING id, created_at,version
 	`
 
 	//Args slice containing the values for the placeholder parameters from
 	//the movie struct.Declaring it immediately next to the sql query
 	//makes it clear what values are used in the query
-	args := []any{movie.Title, movie.Year, movie.Runtime, pq.Array(movie.Genre)}
+	args := []any{movie.Title, movie.Year, movie.Runtime, pq.Array(movie.Genres),movie.Version}
 
 	//use the QueryRow() method to execute the SQL query on the connection pool,
 	//passing in the args slice as a variadic parameter and scanning the system-generated
@@ -69,7 +70,51 @@ func (m MovieModel) Insert(movie *Movie) error {
 
 // Add a placeholder method for fetching a specific record from the movies table.
 func (m MovieModel) Get(id int64) (*Movie, error) {
-	return nil, nil
+	//The PostgreSQL bigserial type we use for the  movie ID starts auto-incrementing
+	//at 1 by default, so no movie will have ID values less than that.
+	//To avoid making unnecessary database call, we take a shortcut and return an 
+	//ErrRecordNotFound error straight away
+	if id < 1{
+		return  nil,ErrRecordNotFound
+	}
+
+	//Define the SQL query for retrieving the movie data
+	Query:=`SELECT id, created_at, title, year,runtime,genres, version
+			FROM movies
+			WHERE id =$1		
+	`
+
+	//Declare a movie struct to hold the data returned by the query
+	var movie Movie
+	//Execute the query using the QueryRow() method, passing in the provided id value
+	//as a placeholder parameter, and scan the response data into the fields of the movie struct
+	//we convert the scan target for the genres column using the pq.Array() adapter function again.
+	err:=m.DB.QueryRow(Query,id).Scan(
+		&movie.ID,
+		&movie.CreatedAt,
+		&movie.Title,
+		&movie.Year,
+		&movie.Runtime,
+		pq.Array(&movie.Genres),
+		&movie.Version,
+
+	)
+
+	//Handle any errors.If there was no matching movie found, scan() will 
+	//return a sql.ErrNoRows error. We check for this and return our custom ErrRecordNotFound
+	//error instead
+
+	if err !=nil{
+		switch{
+		case errors.Is(err, sql.ErrNoRows):
+			return nil,ErrRecordNotFound
+		default:
+			return nil,err
+		}
+	}
+
+	//Otherwise, return a pointer to the movie struct
+	return &movie, nil
 }
 
 // Add a placeholder method for updating a specific record in the movies table.
