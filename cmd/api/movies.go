@@ -1,9 +1,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/greenlight-api/internal/data"
 	"github.com/greenlight-api/validator"
@@ -17,8 +17,8 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 		Title   string   `json:"title"`
 		Year    int32    `json:"year"`
 		Runtime int32    `json:"runtime"`
-		Genres   []string `json:"genres"`
-		Version  int32    `json:"version"`
+		Genres  []string `json:"genres"`
+		Version int32    `json:"version"`
 	}
 
 	err := app.readJSON(w, r, &input)
@@ -32,7 +32,7 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 		Title:   input.Title,
 		Year:    input.Year,
 		Runtime: input.Runtime,
-		Genres:   input.Genres,
+		Genres:  input.Genres,
 	}
 
 	v := validator.New()
@@ -63,7 +63,7 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 	//Write a JSON response with a 201 created status code, the movie data in the
 	//response body, and the Location header
 
-	app.writeJson( map[string]any{"movie": movie},w,r)
+	app.writeJson(map[string]any{"movie": movie}, w, r)
 }
 
 // Add a showMovieHandler for the "GET /v1/movies/:id" endpoint
@@ -72,19 +72,25 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := app.readIDParam(r)
 	if err != nil {
-		http.NotFound(w, r)
+		app.notFoundResponse(w, r)
 		return
 	}
-	data := data.Movie{
-		ID:        id,
-		CreatedAt: time.Now(),
-		Title:     "Commando",
-		Runtime:   120,
-		Genres:     []string{"acappela", "war", "action"},
-		Version:   12,
+
+	//call the Get() method to fetch the data for a specific movie. We also need to use
+	//the errors.Is() function to check if it returns a data.ErrRecordNotFound error
+	//in which case we send a 404 not found response to the client
+
+	movie, err := app.models.Movies.Get(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+
 	}
 
-	// otherwise, we interpolate the movie ID in a placeholder response
-	// fmt.Fprintf(w, "show the details of movie %d\n", id)
-	app.writeJson(data, w, r)
+	app.writeJson(map[string]any{"movie": movie}, w, r)
 }
