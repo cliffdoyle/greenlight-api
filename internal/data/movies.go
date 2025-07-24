@@ -18,7 +18,7 @@ type Movie struct {
 	Title     string    `json:"title"`
 	Year      int32     `json:"year,omitzero"`
 	Runtime   int32     `json:"runtime,omitzero"`
-	Genres     []string  `json:"genres,omitzero"`
+	Genres    []string  `json:"genres,omitzero"`
 	Version   int32     `json:"version"`
 }
 
@@ -55,7 +55,7 @@ func (m MovieModel) Insert(movie *Movie) error {
 	//Args slice containing the values for the placeholder parameters from
 	//the movie struct.Declaring it immediately next to the sql query
 	//makes it clear what values are used in the query
-	args := []any{movie.Title, movie.Year, movie.Runtime, pq.Array(movie.Genres),movie.Version}
+	args := []any{movie.Title, movie.Year, movie.Runtime, pq.Array(movie.Genres), movie.Version}
 
 	//use the QueryRow() method to execute the SQL query on the connection pool,
 	//passing in the args slice as a variadic parameter and scanning the system-generated
@@ -72,14 +72,14 @@ func (m MovieModel) Insert(movie *Movie) error {
 func (m MovieModel) Get(id int64) (*Movie, error) {
 	//The PostgreSQL bigserial type we use for the  movie ID starts auto-incrementing
 	//at 1 by default, so no movie will have ID values less than that.
-	//To avoid making unnecessary database call, we take a shortcut and return an 
+	//To avoid making unnecessary database call, we take a shortcut and return an
 	//ErrRecordNotFound error straight away
-	if id < 1{
-		return  nil,ErrRecordNotFound
+	if id < 1 {
+		return nil, ErrRecordNotFound
 	}
 
 	//Define the SQL query for retrieving the movie data
-	Query:=`SELECT id, created_at, title, year,runtime,genres, version
+	Query := `SELECT id, created_at, title, year,runtime,genres, version
 			FROM movies
 			WHERE id =$1		
 	`
@@ -89,7 +89,7 @@ func (m MovieModel) Get(id int64) (*Movie, error) {
 	//Execute the query using the QueryRow() method, passing in the provided id value
 	//as a placeholder parameter, and scan the response data into the fields of the movie struct
 	//we convert the scan target for the genres column using the pq.Array() adapter function again.
-	err:=m.DB.QueryRow(Query,id).Scan(
+	err := m.DB.QueryRow(Query, id).Scan(
 		&movie.ID,
 		&movie.CreatedAt,
 		&movie.Title,
@@ -97,19 +97,18 @@ func (m MovieModel) Get(id int64) (*Movie, error) {
 		&movie.Runtime,
 		pq.Array(&movie.Genres),
 		&movie.Version,
-
 	)
 
-	//Handle any errors.If there was no matching movie found, scan() will 
+	//Handle any errors.If there was no matching movie found, scan() will
 	//return a sql.ErrNoRows error. We check for this and return our custom ErrRecordNotFound
 	//error instead
 
-	if err !=nil{
-		switch{
+	if err != nil {
+		switch {
 		case errors.Is(err, sql.ErrNoRows):
-			return nil,ErrRecordNotFound
+			return nil, ErrRecordNotFound
 		default:
-			return nil,err
+			return nil, err
 		}
 	}
 
@@ -119,7 +118,27 @@ func (m MovieModel) Get(id int64) (*Movie, error) {
 
 // Add a placeholder method for updating a specific record in the movies table.
 func (m MovieModel) Update(movie *Movie) error {
-	return nil
+	//Declare the SQL query for updating the record and returning the new version
+	//number
+
+	query := `
+	UPDATE movies
+	SET title=$1, year=$2, runtime=$3, genres=$4, version=version+1
+	WHERE id = $5
+	RETURNING version
+	`
+	// Create an args slice containing the values for the placeholder parameters.
+	args := []any{
+		movie.Title,
+		movie.Year,
+		movie.Runtime,
+		pq.Array(movie.Genres),
+		movie.ID,
+	}
+
+	//Use the QueryRow() method to execute the query, passing in the args slice as 
+	//variadic parameter and scanning the new version value into the movie struct
+	return  m.DB.QueryRow(query, args...).Scan(&movie.Version)
 }
 
 // Add a placeholder method for deleting a specific record from the movies table.
